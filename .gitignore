@@ -8,3 +8,5 @@ settings.ini
 *.xls
 *.csv
 data/
+data/in/
+data/out/
