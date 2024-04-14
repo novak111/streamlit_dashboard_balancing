@@ -4,6 +4,8 @@ import re
 import hashlib
 import pandas as pd
 
+#TODO: add if __main__
+
 # file and col names
 column_names_sys_imbal = {'ote_odchylky_v0.csv': [
     'den',
@@ -119,6 +121,8 @@ def create_current_version_df(filenames, input_folder):
         current_version_df[col] = merged_df[col + '_current']
     return current_version_df
 
+
+#TODO: add if __main__
 
 # Main
 current_directory = os.path.dirname(os.path.abspath(__file__))
