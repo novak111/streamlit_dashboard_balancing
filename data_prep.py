@@ -4,6 +4,8 @@ import re
 import hashlib
 import pandas as pd
 
+#TODO extractor of system imbalance data and imbalance and counter imbalance prices; portfolio data will be fake and made up for next 3 years
+
 #TODO: add if __main__
 
 # file and col names
