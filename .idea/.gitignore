@@ -7,3 +7,5 @@ settings.ini
 *.xlsx
 *.xls
 *.csv
+data/
+*/data*/
