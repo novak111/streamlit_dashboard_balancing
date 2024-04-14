@@ -129,7 +129,7 @@ data_in_folder = os.path.join(current_directory, r'data\in\\')
 # v0, v1, v2
 for i, file in enumerate(column_names_sys_imbal.keys()):
     first = i == 0
-    file_path = os.path.join(r'C:\Users\Jaroslav\PycharmProjects\balancing_dahsboard\data\in', file)
+    file_path = os.path.join(data_in_folder, file)
     df = pd.read_csv(file_path, delimiter=';', usecols=column_names_sys_imbal[file])
     df.columns = [col.lower() for col in df.columns]
     f_head, f_ts = parse_ote_ts_data(df, float_col_names, file)
