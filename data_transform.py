@@ -10,12 +10,13 @@ from bokeh.palettes import Category10
 from bokeh.layouts import gridplot
 
 #TODO change paths to relative path
-df_market_data_head = pd.read_csv('in/tables/market_data_head.csv')
-df_market_data_ts = pd.read_csv('in/tables/market_data_ts.csv')
-df_market_prices_head = pd.read_csv('in/tables/market_prices_head.csv')
-df_market_price_ts = pd.read_csv('in/tables/market_prices_ts.csv')
-df_portfolio_data_head = pd.read_csv('in/tables/portfolio_data_head.csv')
-df_portfolio_data_ts = pd.read_csv('in/tables/portfolio_data_ts.csv')
+current_directory = os.path.dirname(os.path.abspath(__file__))
+df_market_data_head = pd.read_csv('data/out/tables/market_data_head.csv')
+df_market_data_ts = pd.read_csv('data/out/tables/market_data_ts.csv')
+df_market_prices_head = pd.read_csv('data/out/tables/market_prices_head.csv')
+df_market_price_ts = pd.read_csv('data/out/tables/market_prices_ts.csv')
+df_portfolio_data_head = pd.read_csv('data/out/tables/portfolio_data_head.csv')
+df_portfolio_data_ts = pd.read_csv('data/out/tables/portfolio_data_ts.csv')
 
 dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
 
