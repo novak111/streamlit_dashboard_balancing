@@ -1,0 +1,10 @@
+id,source_id,name,balance_zone,source,timestamp,id_side,commodity,product_type,tenor,currency
+6f06a71f43d0c0f2fdbdf213c6ca1488,pme_ote_ts_ver_datasp50,imbalance_V2,OTE,OTE,2024-04-06 03:50:12+02:00,,EE,settlement,hour,CZK
+a0a578d330b5c2e938afaa73e3f1c2ea,pme_ote_ts_ver_datasp50,imbalance_V1,OTE,OTE,2024-04-12 03:50:16+02:00,,EE,settlement,hour,CZK
+eaeb779629e61fddb446994eac4fa0bc,pme_ote_ts_ver_datasp51,counter_imbalance_V1,OTE,OTE,2024-04-12 03:50:16+02:00,,EE,settlement,hour,CZK
+6030e053bcbb3a40589bee412ba8e5ca,pme_ote_ts_ver_datasp50,imbalance_V0,OTE,OTE,2024-04-12 03:50:10+02:00,,EE,settlement,hour,CZK
+f2aaa5b1ca3e08b2541abfd573855dde,pme_ote_ts_ver_datasp51,counter_imbalance_V0,OTE,OTE,2024-04-12 03:50:10+02:00,,EE,settlement,hour,CZK
+69480dffd952440a826deaee865b10da,pme_ote_ts_datasp51,counter_imbalance,OTE,OTE,2024-04-12 03:50:22+02:00,,EE,settlement,hour,CZK
+e97f0fdfbed054e7c8d48a35020bd81b,pme_ote_ts_datasp20,day_ahead,OTE,OTE,2024-04-12 03:50:22+02:00,,EE,DA,hour,EUR
+15993057d0e4a280de179245e31d395f,pme_ote_ts_datasp50,imbalance,OTE,OTE,2024-04-12 03:50:22+02:00,,EE,settlement,hour,CZK
+cd2d696965624dfdb5c7c269e4a0253d,pme_ote_ts_ver_datasp51,counter_imbalance_V2,OTE,OTE,2024-04-06 03:50:12+02:00,,EE,settlement,hour,CZK

@@ -1,0 +1,5 @@
+id,source_id,name,balance_zone,subzone,class,type,source,unit,granularity
+dc405ded0551d79cb13664f0dbd7f81c,systemova_odchylka_mwh,system_imbalance,OTE,OTE,,V0,OTE,Mwh,H
+92451d43827e4c63d2268edcb71b3be1,systemova_odchylka_mwh,system_imbalance,OTE,OTE,,V1,OTE,Mwh,H
+ed6742398b8961cb0b455a19876ecb2e,systemova_odchylka_mwh,system_imbalance,OTE,OTE,,V2,OTE,Mwh,H
+6cbb88b61d4c5adab2296f616dd00bc1,systemova_odchylka_mwh,system_imbalance,OTE,OTE,,current,OTE,Mwh,H
