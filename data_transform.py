@@ -217,7 +217,7 @@ def hourly_ts_plots(df, columns, units, dt_from, dt_to):
     # Show the grid
     show(grid)
 
-#TODO predelat aby bzlo ovladano prvky ve streamlitu
+#TODO predelat aby bylo ovladano prvky ve streamlitu
 cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance','imbalance', 'counter_imbalance']
 cols_b2b = ['pnl_balancing_b2b', 'deviation_b2b', 'system_imbalance','imbalance', 'counter_imbalance']
 cols_prod = ['pnl_balancing_prod', 'deviation_prod', 'system_imbalance','imbalance', 'counter_imbalance']
