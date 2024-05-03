@@ -6,8 +6,6 @@ import pandas as pd
 
 #TODO extractor of system imbalance data and imbalance and counter imbalance prices; portfolio data will be fake and made up for next 3 years
 
-#TODO: add if __main__
-
 # file and col names
 column_names_sys_imbal = {'ote_odchylky_v0.csv': [
     'den',
@@ -123,36 +121,33 @@ def create_current_version_df(filenames, input_folder):
         current_version_df[col] = merged_df[col + '_current']
     return current_version_df
 
+if __name__ == "__main__":
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    out_head_file = os.path.join(current_directory, 'data\out\market_data_head.csv')
+    out_ts_file = os.path.join(current_directory, 'data\out\market_data_ts.csv')
+    data_in_folder = os.path.join(current_directory, r'data\in\\')
 
-#TODO: add if __main__
+    # v0, v1, v2
+    for i, file in enumerate(column_names_sys_imbal.keys()):
+        first = i == 0
+        file_path = os.path.join(data_in_folder, file)
+        df = pd.read_csv(file_path, delimiter=';', usecols=column_names_sys_imbal[file])
+        df.columns = [col.lower() for col in df.columns]
+        f_head, f_ts = parse_ote_ts_data(df, float_col_names, file)
+        if first:
+            mode_param = 'w'
+        else:
+            mode_param = 'a'
+        f_head.to_csv(out_head_file, index=False, mode=mode_param, header=first, sep=',')
+        f_ts.to_csv(out_ts_file, index=False, mode=mode_param, header=first, sep=',')
 
-# Main
-current_directory = os.path.dirname(os.path.abspath(__file__))
-out_head_file = os.path.join(current_directory, 'data\out\market_data_head.csv')
-out_ts_file = os.path.join(current_directory, 'data\out\market_data_ts.csv')
-data_in_folder = os.path.join(current_directory, r'data\in\\')
+        print(f'File: {file} parsed and saved')
 
-# v0, v1, v2
-for i, file in enumerate(column_names_sys_imbal.keys()):
-    first = i == 0
-    file_path = os.path.join(data_in_folder, file)
-    df = pd.read_csv(file_path, delimiter=';', usecols=column_names_sys_imbal[file])
+    # current
+    df = create_current_version_df(file_names, data_in_folder)
     df.columns = [col.lower() for col in df.columns]
-    f_head, f_ts = parse_ote_ts_data(df, float_col_names, file)
-    if first:
-        mode_param = 'w'
-    else:
-        mode_param = 'a'
-    f_head.to_csv(out_head_file, index=False, mode=mode_param, header=first, sep=',')
-    f_ts.to_csv(out_ts_file, index=False, mode=mode_param, header=first, sep=',')
+    f_head, f_ts = parse_ote_ts_data(df, float_col_names, 'current')
+    f_head.to_csv(out_head_file, index=False, mode='a', header=first, sep=',')
+    f_ts.to_csv(out_ts_file, index=False, mode='a', header=first, sep=',')
 
-    print(f'File: {file} parsed and saved')
-
-# current
-df = create_current_version_df(file_names, data_in_folder)
-df.columns = [col.lower() for col in df.columns]
-f_head, f_ts = parse_ote_ts_data(df, float_col_names, 'current')
-f_head.to_csv(out_head_file, index=False, mode='a', header=first, sep=',')
-f_ts.to_csv(out_ts_file, index=False, mode='a', header=first, sep=',')
-
-print('ote_imbalances_current parsed and save')
+    print('ote_imbalances_current parsed and save')
