@@ -121,7 +121,7 @@ def create_current_version_df(filenames, input_folder):
         current_version_df[col] = merged_df[col + '_current']
     return current_version_df
 
-if __name__ == "__main__":
+def main():
     current_directory = os.path.dirname(os.path.abspath(__file__))
     out_head_file = os.path.join(current_directory, 'data\out\market_data_head.csv')
     out_ts_file = os.path.join(current_directory, 'data\out\market_data_ts.csv')
@@ -151,3 +151,6 @@ if __name__ == "__main__":
     f_ts.to_csv(out_ts_file, index=False, mode='a', header=first, sep=',')
 
     print('ote_imbalances_current parsed and save')
+
+if __name__ == "__main__":
+    main()
