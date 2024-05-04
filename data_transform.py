@@ -1,36 +1,37 @@
 # import libs
+import os
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import pytz
-from bokeh.plotting import figure, show
+from bokeh.plotting import figure, show, output_file, save
 from bokeh.models import ColumnDataSource, HoverTool, LinearAxis, Range1d, Legend
 from bokeh.io import output_notebook
 from bokeh.palettes import Category10
 from bokeh.layouts import gridplot
 
-#TODO change paths to relative path
-df_market_data_head = pd.read_csv('in/tables/market_data_head.csv')
-df_market_data_ts = pd.read_csv('in/tables/market_data_ts.csv')
-df_market_prices_head = pd.read_csv('in/tables/market_prices_head.csv')
-df_market_price_ts = pd.read_csv('in/tables/market_prices_ts.csv')
-df_portfolio_data_head = pd.read_csv('in/tables/portfolio_data_head.csv')
-df_portfolio_data_ts = pd.read_csv('in/tables/portfolio_data_ts.csv')
+current_directory = os.path.dirname(os.path.abspath(__file__))
+df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
+df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'), decimal=',')
+df_market_prices_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_head.csv'))
+df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_ts.csv'))
+df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
+df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'), delimiter=';', decimal=',')
 
 dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
 
-transform_dict = {'df_market_data_head': ['head', df_market_data_head, ['timestamp']],
-                   'df_market_data_ts': ['ts', df_market_data_ts ,['timestamp', 'delivery_start']],
+transform_dict = {'df_market_data_head': ['head', df_market_data_head, []], #column timestamp will be added after creating extractor for market data
+                   'df_market_data_ts': ['ts', df_market_data_ts ,['delivery_start']],
                    'df_market_prices_head': ['head', df_market_prices_head,['timestamp']],
-                   'df_market_price_ts': ['ts', df_market_price_ts,['timestamp', 'delivery_start']],
+                   'df_market_price_ts': ['ts', df_market_price_ts,['delivery_start']],
                    'df_portfolio_data_head': ['head', df_portfolio_data_head, ['timestamp']],
-                   'df_portfolio_data_ts': ['ts', df_portfolio_data_ts, ['timestamp', 'delivery_datetime']]
+                   'df_portfolio_data_ts': ['ts', df_portfolio_data_ts, ['delivery_datetime']]
                     }
 
 tables = list(transform_dict.keys())
 
 # func if col from datetime_tseries exist in dataframe then convert it to datetime and trim it so it contains just data Y-1 and Y+0
-#TODO change it just to Y-1
+# data for Y-0 are not available because extractors were not created yet. Most current timeseries ends at datetime 31.12.2023 23:00:00
 def df_dt_transform(df_name, df_type, df, dt_cols):
     # string to datetime
     for dt_col in dt_cols:
@@ -38,9 +39,11 @@ def df_dt_transform(df_name, df_type, df, dt_cols):
         print(f" Column '{dt_col}' from dataframe '{df_name}' was converted to datetime.")
     # trimm data in table of type ts, to contain data for Y-1 and Y+0
     if df_type == 'ts':
-        first_hour_last_year = pytz.timezone('Europe/Prague').localize(datetime(datetime.now().year - 1, 1, 1, 0, 0, 0))
-        last_hour_this_year = pytz.timezone('Europe/Prague').localize(datetime.now())
-        df = df[(df[dt_cols[1]] >= first_hour_last_year) & (df[dt_cols[1]] <= last_hour_this_year)]
+        for dt_col in dt_cols:
+            if dt_col in ['delivery_start', 'delivery_datetime']:
+                first_hour_last_year = pytz.timezone('Europe/Prague').localize(datetime(datetime.now().year - 1, 1, 1, 0, 0, 0))
+                last_hour_this_year = pytz.timezone('Europe/Prague').localize(datetime.now())
+                df = df[(df[dt_col] >= first_hour_last_year) & (df[dt_col] <= last_hour_this_year)]
     elif df_type == 'head':
         pass
     else:
@@ -107,8 +110,8 @@ segments_dev = ['deviation' + s for s in segments]
 segments_met = ['metering' + s for s in segments]
 segments_vspot = ['vspot' + s for s in segments]
 
-for segment_dev, segments_met, segment_vspot in zip(segments_dev, segments_met, segments_vspot):
-    df_data[segment_dev] = df_data[segment_vspot] - df_data[segments_met]
+for segment_dev, segment_met, segment_vspot in zip(segments_dev, segments_met, segments_vspot):
+    df_data[segment_dev] = df_data[segment_vspot] - df_data[segment_met]
 
 df_data['pnl_balancing_portfolio'] = np.where(np.sign(df_data['kladna_odchylka_mnozstvi']) == np.sign(df_data['system_imbalance']),
                                               df_data['kladna_odchylka_mnozstvi'] * df_data['imbalance'],
@@ -131,9 +134,9 @@ df_data['odchylka_mnozstvi'] = df_data['kladna_odchylka_mnozstvi'] + df_data['za
 
 # Vyhodncení po měsících - tabulka
 pnl_bal_segments.append('pnl_balancing_portfolio')
-df_pnl_monthly = df_data[pnl_bal_segments].resample('M').sum()
+df_pnl_monthly = df_data[pnl_bal_segments].resample('ME').sum()
 
-# Vyhodncení po měsících - graf
+################################### GRAFY DEFINICE ####################################################################
 
 #TODO predelat do plotly a pak do streamlitu
 def monthly_sums(df, column):
@@ -144,8 +147,9 @@ def monthly_sums(df, column):
     df_plot = df_data[pnl_bal_segments].resample('M').sum()[column].reset_index()
     source = ColumnDataSource(df_plot)
 
+    output_file(filename=f'{column}.html', title="Static HTML file")
     # Create a figure
-    p = figure(x_axis_type='datetime', plot_width=900, plot_height=350, title=column,
+    p = figure(x_axis_type='datetime', width=900, height=350, title=column,
                toolbar_location=None, tools="")
 
     # Add bars
@@ -163,7 +167,7 @@ def monthly_sums(df, column):
     p.add_tools(hover)
 
     # Show the plot
-    show(p)
+    save(p)
 
 # Graf v hodinovém detailu
 def hourly_ts_plots(df, columns, units, dt_from, dt_to):
@@ -177,6 +181,8 @@ def hourly_ts_plots(df, columns, units, dt_from, dt_to):
     df_plot = df[columns]
     source = ColumnDataSource(data=df_plot.loc[dt_from:dt_to, :])
 
+    output_file(filename='hourly_ts_plots.html', title="Static HTML file")
+
     # Create a list to store figures and HoverTools
     figures = []
     hovertips = []
@@ -187,7 +193,7 @@ def hourly_ts_plots(df, columns, units, dt_from, dt_to):
     # Create figures and HoverTools dynamically
     for column, color, unit in zip(columns, colors, units):
         # Create a new figure
-        fig = figure(x_axis_type="datetime", plot_width=900, plot_height=200,
+        fig = figure(x_axis_type="datetime", width=900, height=200,
                      title=f"Hourly Time Series - {column} {unit}")
 
         # Plot the data with respective color
@@ -215,8 +221,9 @@ def hourly_ts_plots(df, columns, units, dt_from, dt_to):
         fig.legend.visible = False
 
     # Show the grid
-    show(grid)
+    save(grid)
 
+############################## NASTAVENI PARAMETRU A SPUSTENI FUNKCI PRO TOVRBU GRAFU ########################################
 #TODO predelat aby bylo ovladano prvky ve streamlitu
 cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance','imbalance', 'counter_imbalance']
 cols_b2b = ['pnl_balancing_b2b', 'deviation_b2b', 'system_imbalance','imbalance', 'counter_imbalance']
@@ -224,13 +231,13 @@ cols_prod = ['pnl_balancing_prod', 'deviation_prod', 'system_imbalance','imbalan
 cols_portfolio = ['pnl_balancing_portfolio', 'odchylka_mnozstvi', 'system_imbalance','imbalance', 'counter_imbalance']
 
 units = ['[CZK]', '[MWh]', '[MWh]','[CZK/MWH]','[CZK/MWH]']
-dt_from = '2024-01-01 00:00:00+01:00'
-dt_to = '2024-01-31 00:00:00+01:00'
+dt_from = '2023-01-01 00:00:00+01:00'
+dt_to = '2023-01-31 00:00:00+01:00'
 hourly_ts_plots(df_data, cols_portfolio, units, dt_from, dt_to)
 
-cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance','imbalance', 'counter_imbalance']
+cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance', 'imbalance', 'counter_imbalance']
 units = ['[CZK]', '[MWh]', '[MWh]','[CZK/MWH]','[CZK/MWH]']
-dt_from = '2024-01-01 00:00:00+01:00'
-dt_to = '2024-01-31 00:00:00+01:00'
+dt_from = '2023-01-01 00:00:00+01:00'
+dt_to = '2023-01-31 00:00:00+01:00'
 
 hourly_ts_plots(df_data, cols_b2c, units, dt_from, dt_to)
