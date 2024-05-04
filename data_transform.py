@@ -1,4 +1,5 @@
 # import libs
+import os
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -9,14 +10,13 @@ from bokeh.io import output_notebook
 from bokeh.palettes import Category10
 from bokeh.layouts import gridplot
 
-#TODO change paths to relative path
 current_directory = os.path.dirname(os.path.abspath(__file__))
-df_market_data_head = pd.read_csv('data/out/tables/market_data_head.csv')
-df_market_data_ts = pd.read_csv('data/out/tables/market_data_ts.csv')
-df_market_prices_head = pd.read_csv('data/out/tables/market_prices_head.csv')
-df_market_price_ts = pd.read_csv('data/out/tables/market_prices_ts.csv')
-df_portfolio_data_head = pd.read_csv('data/out/tables/portfolio_data_head.csv')
-df_portfolio_data_ts = pd.read_csv('data/out/tables/portfolio_data_ts.csv')
+df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
+df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'))
+df_market_prices_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_head.csv'))
+df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_ts.csv'))
+df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
+df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'))
 
 dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
 
@@ -31,7 +31,7 @@ transform_dict = {'df_market_data_head': ['head', df_market_data_head, ['timesta
 tables = list(transform_dict.keys())
 
 # func if col from datetime_tseries exist in dataframe then convert it to datetime and trim it so it contains just data Y-1 and Y+0
-#TODO change it just to Y-1
+# data for Y-0 are not available because extractors were not created yet. Most current timeseries ends at datetime 31.12.2023 23:00:00
 def df_dt_transform(df_name, df_type, df, dt_cols):
     # string to datetime
     for dt_col in dt_cols:
@@ -134,7 +134,7 @@ df_data['odchylka_mnozstvi'] = df_data['kladna_odchylka_mnozstvi'] + df_data['za
 pnl_bal_segments.append('pnl_balancing_portfolio')
 df_pnl_monthly = df_data[pnl_bal_segments].resample('M').sum()
 
-# Vyhodncení po měsících - graf
+################################### GRAFY DEFINICE ####################################################################
 
 #TODO predelat do plotly a pak do streamlitu
 def monthly_sums(df, column):
@@ -218,6 +218,7 @@ def hourly_ts_plots(df, columns, units, dt_from, dt_to):
     # Show the grid
     show(grid)
 
+############################## NASTAVENI PARAMETRU A SPUSTENI FUNKCI PRO TOVRBU GRAFU ########################################
 #TODO predelat aby bylo ovladano prvky ve streamlitu
 cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance','imbalance', 'counter_imbalance']
 cols_b2b = ['pnl_balancing_b2b', 'deviation_b2b', 'system_imbalance','imbalance', 'counter_imbalance']
