@@ -10,26 +10,6 @@ from bokeh.io import output_notebook
 from bokeh.palettes import Category10
 from bokeh.layouts import gridplot
 
-current_directory = os.path.dirname(os.path.abspath(__file__))
-df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
-df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'), decimal=',')
-df_market_prices_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_head.csv'))
-df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_ts.csv'))
-df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
-df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'), delimiter=';', decimal=',')
-
-dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
-
-transform_dict = {'df_market_data_head': ['head', df_market_data_head, []], #column timestamp will be added after creating extractor for market data
-                   'df_market_data_ts': ['ts', df_market_data_ts ,['delivery_start']],
-                   'df_market_prices_head': ['head', df_market_prices_head,['timestamp']],
-                   'df_market_price_ts': ['ts', df_market_price_ts,['delivery_start']],
-                   'df_portfolio_data_head': ['head', df_portfolio_data_head, ['timestamp']],
-                   'df_portfolio_data_ts': ['ts', df_portfolio_data_ts, ['delivery_datetime']]
-                    }
-
-tables = list(transform_dict.keys())
-
 # func if col from datetime_tseries exist in dataframe then convert it to datetime and trim it so it contains just data Y-1 and Y+0
 # data for Y-0 are not available because extractors were not created yet. Most current timeseries ends at datetime 31.12.2023 23:00:00
 def df_dt_transform(df_name, df_type, df, dt_cols):
@@ -49,6 +29,26 @@ def df_dt_transform(df_name, df_type, df, dt_cols):
     else:
         print(f"Error: {df_type} in {df_name} is not specified correctly.")
     return df
+
+current_directory = os.path.dirname(os.path.abspath(__file__))
+df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
+df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'), decimal=',')
+df_market_prices_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_head.csv'))
+df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_ts.csv'))
+df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
+df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'), delimiter=';', decimal=',')
+
+dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
+
+transform_dict = {'df_market_data_head': ['head', df_market_data_head, []], #column timestamp will be added after creating extractor for market data
+                   'df_market_data_ts': ['ts', df_market_data_ts ,['delivery_start']],
+                   'df_market_prices_head': ['head', df_market_prices_head,['timestamp']],
+                   'df_market_price_ts': ['ts', df_market_price_ts,['delivery_start']],
+                   'df_portfolio_data_head': ['head', df_portfolio_data_head, ['timestamp']],
+                   'df_portfolio_data_ts': ['ts', df_portfolio_data_ts, ['delivery_datetime']]
+                    }
+
+tables = list(transform_dict.keys())
 
 for table in tables:
     transform_dict[table][1] = df_dt_transform(table, transform_dict[table][0], transform_dict[table][1], transform_dict[table][2])
@@ -93,6 +93,9 @@ for i, df in enumerate(dfs_merged):
 
 df_market_data, df_market_prices, df_portfolio_data = dfs_merged
 del dfs_merged
+
+
+
 
 # change sign for 'zaporna_odchylka_mnozstvi'
 df_portfolio_data['zaporna_odchylka_mnozstvi'] = -1*df_portfolio_data['zaporna_odchylka_mnozstvi']
