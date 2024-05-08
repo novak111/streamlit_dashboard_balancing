@@ -79,7 +79,7 @@ def inbal_pnl_calc(df):
 def pnl_monthly(df):
     segments = ['_b2b', '_b2c', '_prod', '_portfolio']
     pnl_bal_segments = ['pnl_balancing' + s for s in segments]
-    df_pnl_monthly = df_data[pnl_bal_segments].resample('ME').sum()
+    df_pnl_monthly = df[pnl_bal_segments].resample('ME').sum()
     return df_pnl_monthly
 
 ################################### GRAFY DEFINICE ####################################################################
