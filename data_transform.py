@@ -248,5 +248,6 @@ def main():
     df_data = inbal_pnl_calc(df_data)
     return df_data
 
+
 if __name__ == "__main__":
     main()

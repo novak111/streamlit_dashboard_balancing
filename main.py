@@ -8,8 +8,7 @@ data_prep.main()
 
 df_data = data_transform.main()
 
-############################## NASTAVENI PARAMETRU A SPUSTENI FUNKCI PRO TOVRBU GRAFU ########################################
-
+# Setting of paramaters for plots creation
 # TODO Monthly evaluation table
 df_pnl_monthly = data_transform.pnl_monthly(df_data)
 
