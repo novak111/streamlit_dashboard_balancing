@@ -44,106 +44,43 @@ def pivot_dfs(df_list):
         df_list[i].columns.name = None
     return df_list
 
-# Loading data
-current_directory = os.path.dirname(os.path.abspath(__file__))
-df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
-df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'), decimal=',')
-df_market_prices_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_head.csv'))
-df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_ts.csv'))
-df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
-df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'), delimiter=';', decimal=',')
+# Calculation of inbalances and profit and loss for each segment
+def inbal_pnl_calc(df):
+    segments = ['_b2b', '_b2c', '_prod']
+    segments_dev = ['deviation' + s for s in segments]
+    segments_met = ['metering' + s for s in segments]
+    segments_vspot = ['vspot' + s for s in segments]
 
-# Formating datetime data
-dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
+    for segment_dev, segment_met, segment_vspot in zip(segments_dev, segments_met, segments_vspot):
+        df[segment_dev] = df[segment_vspot] - df[segment_met]
 
-transform_dict = {'df_market_data_head': ['head', df_market_data_head, []], #column timestamp will be added after creating extractor for market data
-                   'df_market_data_ts': ['ts', df_market_data_ts ,['delivery_start']],
-                   'df_market_prices_head': ['head', df_market_prices_head,['timestamp']],
-                   'df_market_price_ts': ['ts', df_market_price_ts,['delivery_start']],
-                   'df_portfolio_data_head': ['head', df_portfolio_data_head, ['timestamp']],
-                   'df_portfolio_data_ts': ['ts', df_portfolio_data_ts, ['delivery_datetime']]
-                    }
+    df['pnl_balancing_portfolio'] = np.where(
+        np.sign(df['kladna_odchylka_mnozstvi']) == np.sign(df['system_imbalance']),
+        df['kladna_odchylka_mnozstvi'] * df['imbalance'],
+        df['kladna_odchylka_mnozstvi'] * df['counter_imbalance']
+        ) + \
+                                         np.where(np.sign(df['zaporna_odchylka_mnozstvi']) == np.sign(
+                                             df['system_imbalance']),
+                                                  df['zaporna_odchylka_mnozstvi'] * df['imbalance'],
+                                                  df['zaporna_odchylka_mnozstvi'] * df['counter_imbalance'])
 
-tables = list(transform_dict.keys())
+    pnl_bal_segments = ['pnl_balancing' + s for s in segments]
 
-for table in tables:
-    transform_dict[table][1] = df_dt_transform(table, transform_dict[table][0], transform_dict[table][1], transform_dict[table][2])
+    for pnl_bal_segment, segment_dev in zip(pnl_bal_segments, segments_dev):
+        df[pnl_bal_segment] = np.where(np.sign(df[segment_dev]) == np.sign(df['system_imbalance']),
+                                            df[segment_dev] * df['imbalance'],
+                                            df[segment_dev] * df['counter_imbalance']
+                                            )
+    df['odchylka_mnozstvi'] = df['kladna_odchylka_mnozstvi'] + df['zaporna_odchylka_mnozstvi']
 
-for i, value in enumerate(list(transform_dict.items())):
-    dfs[i] = list(transform_dict.items())[i][1][1]
-del transform_dict
+    return df
 
-df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts = dfs
-del dfs
-
-# Filtering only relevant data
-# Setting filtering dictionaries
-df_market_data_head_filter_dict = {'type': ['current']}
-
-df_market_prices_head_filter_dict = {'commodity': ['EE'],
-                                     'name': ['imbalance', 'counter_imbalance']}
-
-df_portfolio_data_head_filter_dict = {'commodity': ['EE'],
-                                      'type': ['Aktualni', 'prediction'],
-                                      'name': ['spotreba_a+b+ztraty', 'vspot_b2b', 'spotreba_c', 'vspot_b2c', 'vyroba_a+b+c',
-                                                'vspot_b2b_prod', 'kladna_odchylka_mnozstvi','zaporna_odchylka_mnozstvi']}
-
-# Runinig filtering funciton
-df_market_data_head = df_head_filter(df_market_data_head, df_market_data_head_filter_dict)
-df_market_prices_head = df_head_filter(df_market_prices_head, df_market_prices_head_filter_dict)
-df_portfolio_data_head = df_head_filter(df_portfolio_data_head, df_portfolio_data_head_filter_dict)
-
-# Merging
-df_market_data = pd.merge(df_market_data_head, df_market_data_ts, on='id', how='inner', suffixes=('_head', '_ts'))
-df_market_prices = pd.merge(df_market_prices_head, df_market_price_ts, on='id', how='inner', suffixes=('_head', '_ts'))
-df_portfolio_data = pd.merge(df_portfolio_data_head, df_portfolio_data_ts, on='id', how='inner', suffixes=('_head', '_ts'))
-df_portfolio_data = df_portfolio_data.rename(columns={'delivery_datetime': 'delivery_start'})
-
-# Pivoting  tables
-df_market_data, df_market_prices, df_portfolio_data = pivot_dfs([df_market_data, df_market_prices, df_portfolio_data])
-
-
-# change sign for 'zaporna_odchylka_mnozstvi'
-df_portfolio_data['zaporna_odchylka_mnozstvi'] = -1*df_portfolio_data['zaporna_odchylka_mnozstvi']
-
-df_data = df_market_data.join([df_market_prices, df_portfolio_data], how='inner')
-df_data = df_data.rename(columns={'spotreba_a+b+ztraty': 'metering_b2b',
-                                  'spotreba_c': 'metering_b2c',
-                                  'vyroba_a+b+c': 'metering_prod',
-                                  'vspot_b2b_prod': 'vspot_prod'})
-df_data = df_data.fillna(0)
-
-# Výpočet odchylek pro jednotlivé segmenty
-segments = ['_b2b', '_b2c', '_prod']
-segments_dev = ['deviation' + s for s in segments]
-segments_met = ['metering' + s for s in segments]
-segments_vspot = ['vspot' + s for s in segments]
-
-for segment_dev, segment_met, segment_vspot in zip(segments_dev, segments_met, segments_vspot):
-    df_data[segment_dev] = df_data[segment_vspot] - df_data[segment_met]
-
-df_data['pnl_balancing_portfolio'] = np.where(np.sign(df_data['kladna_odchylka_mnozstvi']) == np.sign(df_data['system_imbalance']),
-                                              df_data['kladna_odchylka_mnozstvi'] * df_data['imbalance'],
-                                              df_data['kladna_odchylka_mnozstvi'] * df_data['counter_imbalance']
-                                             ) + \
-                                     np.where(np.sign(df_data['zaporna_odchylka_mnozstvi']) == np.sign(df_data['system_imbalance']),
-                                              df_data['zaporna_odchylka_mnozstvi'] * df_data['imbalance'],
-                                              df_data['zaporna_odchylka_mnozstvi'] * df_data['counter_imbalance'])
-
-pnl_bal_segments = ['pnl_balancing' + s for s in segments]
-
-for pnl_bal_segment, segment_dev in zip(pnl_bal_segments, segments_dev):
-    df_data[pnl_bal_segment] = np.where(np.sign(df_data[segment_dev]) == np.sign(df_data['system_imbalance']),
-                                        df_data[segment_dev] * df_data['imbalance'],
-                                        df_data[segment_dev] * df_data['counter_imbalance']
-                                       )
-
-
-df_data['odchylka_mnozstvi'] = df_data['kladna_odchylka_mnozstvi'] + df_data['zaporna_odchylka_mnozstvi']
-
-# Vyhodncení po měsících - tabulka
-pnl_bal_segments.append('pnl_balancing_portfolio')
-df_pnl_monthly = df_data[pnl_bal_segments].resample('ME').sum()
+# Monthly evaluation
+def pnl_monthly(df):
+    segments = ['_b2b', '_b2c', '_prod', '_portfolio']
+    pnl_bal_segments = ['pnl_balancing' + s for s in segments]
+    df_pnl_monthly = df_data[pnl_bal_segments].resample('ME').sum()
+    return df_pnl_monthly
 
 ################################### GRAFY DEFINICE ####################################################################
 
@@ -153,7 +90,10 @@ def monthly_sums(df, column):
     :param df: dataframe
     :param column: string, name of the column to plot
     """
-    df_plot = df_data[pnl_bal_segments].resample('M').sum()[column].reset_index()
+    segments = ['_b2b', '_b2c', '_prod', '_portfolio']
+    pnl_bal_segments = ['pnl_balancing' + s for s in segments]
+
+    df_plot = df[pnl_bal_segments].resample('M').sum()[column].reset_index()
     source = ColumnDataSource(df_plot)
 
     output_file(filename=f'{column}.html', title="Static HTML file")
@@ -232,21 +172,81 @@ def hourly_ts_plots(df, columns, units, dt_from, dt_to):
     # Show the grid
     save(grid)
 
-############################## NASTAVENI PARAMETRU A SPUSTENI FUNKCI PRO TOVRBU GRAFU ########################################
-#TODO predelat aby bylo ovladano prvky ve streamlitu
-cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance','imbalance', 'counter_imbalance']
-cols_b2b = ['pnl_balancing_b2b', 'deviation_b2b', 'system_imbalance','imbalance', 'counter_imbalance']
-cols_prod = ['pnl_balancing_prod', 'deviation_prod', 'system_imbalance','imbalance', 'counter_imbalance']
-cols_portfolio = ['pnl_balancing_portfolio', 'odchylka_mnozstvi', 'system_imbalance','imbalance', 'counter_imbalance']
 
-units = ['[CZK]', '[MWh]', '[MWh]','[CZK/MWH]','[CZK/MWH]']
-dt_from = '2023-01-01 00:00:00+01:00'
-dt_to = '2023-01-31 00:00:00+01:00'
-hourly_ts_plots(df_data, cols_portfolio, units, dt_from, dt_to)
+def main():
+    # Loading data
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
+    df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'), decimal=',')
+    df_market_prices_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_head.csv'))
+    df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_prices_ts.csv'))
+    df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
+    df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'), delimiter=';', decimal=',')
 
-cols_b2c = ['pnl_balancing_b2c', 'deviation_b2c', 'system_imbalance', 'imbalance', 'counter_imbalance']
-units = ['[CZK]', '[MWh]', '[MWh]','[CZK/MWH]','[CZK/MWH]']
-dt_from = '2023-01-01 00:00:00+01:00'
-dt_to = '2023-01-31 00:00:00+01:00'
+    # Formating datetime data
+    dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
 
-hourly_ts_plots(df_data, cols_b2c, units, dt_from, dt_to)
+    transform_dict = {'df_market_data_head': ['head', df_market_data_head, []], #column timestamp will be added after creating extractor for market data
+                       'df_market_data_ts': ['ts', df_market_data_ts ,['delivery_start']],
+                       'df_market_prices_head': ['head', df_market_prices_head,['timestamp']],
+                       'df_market_price_ts': ['ts', df_market_price_ts,['delivery_start']],
+                       'df_portfolio_data_head': ['head', df_portfolio_data_head, ['timestamp']],
+                       'df_portfolio_data_ts': ['ts', df_portfolio_data_ts, ['delivery_datetime']]
+                        }
+
+    tables = list(transform_dict.keys())
+
+    for table in tables:
+        transform_dict[table][1] = df_dt_transform(table, transform_dict[table][0], transform_dict[table][1], transform_dict[table][2])
+
+    for i, value in enumerate(list(transform_dict.items())):
+        dfs[i] = list(transform_dict.items())[i][1][1]
+    del transform_dict
+
+    df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts = dfs
+    del dfs
+
+    # Filtering only relevant data
+    # Setting filtering dictionaries
+    df_market_data_head_filter_dict = {'type': ['current']}
+
+    df_market_prices_head_filter_dict = {'commodity': ['EE'],
+                                         'name': ['imbalance', 'counter_imbalance']}
+
+    df_portfolio_data_head_filter_dict = {'commodity': ['EE'],
+                                          'type': ['Aktualni', 'prediction'],
+                                          'name': ['spotreba_a+b+ztraty', 'vspot_b2b', 'spotreba_c', 'vspot_b2c', 'vyroba_a+b+c',
+                                                    'vspot_b2b_prod', 'kladna_odchylka_mnozstvi','zaporna_odchylka_mnozstvi']}
+
+    # Runinig filtering funciton
+    df_market_data_head = df_head_filter(df_market_data_head, df_market_data_head_filter_dict)
+    df_market_prices_head = df_head_filter(df_market_prices_head, df_market_prices_head_filter_dict)
+    df_portfolio_data_head = df_head_filter(df_portfolio_data_head, df_portfolio_data_head_filter_dict)
+
+    # Merging
+    df_market_data = pd.merge(df_market_data_head, df_market_data_ts, on='id', how='inner', suffixes=('_head', '_ts'))
+    df_market_prices = pd.merge(df_market_prices_head, df_market_price_ts, on='id', how='inner', suffixes=('_head', '_ts'))
+    df_portfolio_data = pd.merge(df_portfolio_data_head, df_portfolio_data_ts, on='id', how='inner', suffixes=('_head', '_ts'))
+    df_portfolio_data = df_portfolio_data.rename(columns={'delivery_datetime': 'delivery_start'})
+
+    # Pivoting  tables
+    df_market_data, df_market_prices, df_portfolio_data = pivot_dfs([df_market_data, df_market_prices, df_portfolio_data])
+
+
+    # change sign for 'zaporna_odchylka_mnozstvi'
+    df_portfolio_data['zaporna_odchylka_mnozstvi'] = -1*df_portfolio_data['zaporna_odchylka_mnozstvi']
+
+    #join tables, rename columns, fill missing data with 0
+    df_data = df_market_data.join([df_market_prices, df_portfolio_data], how='inner')
+    df_data = df_data.rename(columns={'spotreba_a+b+ztraty': 'metering_b2b',
+                                      'spotreba_c': 'metering_b2c',
+                                      'vyroba_a+b+c': 'metering_prod',
+                                      'vspot_b2b_prod': 'vspot_prod'})
+    df_data = df_data.fillna(0)
+
+    # Calculation of inbalances and profit and loss for each segment
+    df_data = inbal_pnl_calc(df_data)
+    return df_data
+
+if __name__ == "__main__":
+    main()
