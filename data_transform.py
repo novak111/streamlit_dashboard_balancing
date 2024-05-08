@@ -30,6 +30,21 @@ def df_dt_transform(df_name, df_type, df, dt_cols):
         print(f"Error: {df_type} in {df_name} is not specified correctly.")
     return df
 
+def df_head_filter(df,filter_dict):
+    for key, value in filter_dict.items():
+        df = df[df[key].isin(value)]
+    return df
+
+def pivot_dfs(df_list):
+    for i, df in enumerate(df_list):
+        df_list[i] = df_list[i].pivot_table(index='delivery_start',
+                                                  columns='name',
+                                                  values='value',
+                                                  aggfunc='max')
+        df_list[i].columns.name = None
+    return df_list
+
+# Loading data
 current_directory = os.path.dirname(os.path.abspath(__file__))
 df_market_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_head.csv'))
 df_market_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\market_data_ts.csv'), decimal=',')
@@ -38,6 +53,7 @@ df_market_price_ts = pd.read_csv(os.path.join(current_directory, r'data\out\mark
 df_portfolio_data_head = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_head.csv'))
 df_portfolio_data_ts = pd.read_csv(os.path.join(current_directory, r'data\out\portfolio_data_ts.csv'), delimiter=';', decimal=',')
 
+# Formating datetime data
 dfs = [df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts]
 
 transform_dict = {'df_market_data_head': ['head', df_market_data_head, []], #column timestamp will be added after creating extractor for market data
@@ -60,41 +76,31 @@ del transform_dict
 df_market_data_head, df_market_data_ts, df_market_prices_head, df_market_price_ts, df_portfolio_data_head, df_portfolio_data_ts = dfs
 del dfs
 
-# Vyfiltrování pouze relevantních dat
-df_market_data_head = df_market_data_head[df_market_data_head['type'] == 'current']
-df_market_prices_head = df_market_prices_head[(df_market_prices_head['commodity'] == 'EE') &
-                                            (df_market_prices_head['name'].isin(['imbalance', 'counter_imbalance']))]
+# Filtering only relevant data
+# Setting filtering dictionaries
+df_market_data_head_filter_dict = {'type': ['current']}
 
-df_portfolio_data_head = df_portfolio_data_head[(df_portfolio_data_head['commodity'] == 'EE') &
-                                                (df_portfolio_data_head['type'].isin(['Aktualni', 'prediction'])) &
-                                                (df_portfolio_data_head['name'].isin(['spotreba_a+b+ztraty',
-                                                                                      'vspot_b2b',
-                                                                                      'spotreba_c',
-                                                                                      'vspot_b2c',
-                                                                                      'vyroba_a+b+c',
-                                                                                      'vspot_b2b_prod',
-                                                                                      'kladna_odchylka_mnozstvi',
-                                                                                      'zaporna_odchylka_mnozstvi']))]
+df_market_prices_head_filter_dict = {'commodity': ['EE'],
+                                     'name': ['imbalance', 'counter_imbalance']}
 
+df_portfolio_data_head_filter_dict = {'commodity': ['EE'],
+                                      'type': ['Aktualni', 'prediction'],
+                                      'name': ['spotreba_a+b+ztraty', 'vspot_b2b', 'spotreba_c', 'vspot_b2c', 'vyroba_a+b+c',
+                                                'vspot_b2b_prod', 'kladna_odchylka_mnozstvi','zaporna_odchylka_mnozstvi']}
+
+# Runinig filtering funciton
+df_market_data_head = df_head_filter(df_market_data_head, df_market_data_head_filter_dict)
+df_market_prices_head = df_head_filter(df_market_prices_head, df_market_prices_head_filter_dict)
+df_portfolio_data_head = df_head_filter(df_portfolio_data_head, df_portfolio_data_head_filter_dict)
+
+# Merging
 df_market_data = pd.merge(df_market_data_head, df_market_data_ts, on='id', how='inner', suffixes=('_head', '_ts'))
 df_market_prices = pd.merge(df_market_prices_head, df_market_price_ts, on='id', how='inner', suffixes=('_head', '_ts'))
-
 df_portfolio_data = pd.merge(df_portfolio_data_head, df_portfolio_data_ts, on='id', how='inner', suffixes=('_head', '_ts'))
 df_portfolio_data = df_portfolio_data.rename(columns={'delivery_datetime': 'delivery_start'})
 
-# Pivoting and joining tables
-dfs_merged = [df_market_data, df_market_prices, df_portfolio_data]
-for i, df in enumerate(dfs_merged):
-    dfs_merged[i] = dfs_merged[i].pivot_table(index='delivery_start',
-                                 columns = 'name',
-                                 values='value',
-                                 aggfunc='max')
-    dfs_merged[i].columns.name = None
-
-df_market_data, df_market_prices, df_portfolio_data = dfs_merged
-del dfs_merged
-
-
+# Pivoting  tables
+df_market_data, df_market_prices, df_portfolio_data = pivot_dfs([df_market_data, df_market_prices, df_portfolio_data])
 
 
 # change sign for 'zaporna_odchylka_mnozstvi'
